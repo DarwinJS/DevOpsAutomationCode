@@ -188,7 +188,7 @@ If (!$FIOPATHNAME -OR !(Test-Path "$FIOPATHNAME"))
 If ((!(Test-Path variable:DeviceIDsToInitialize)) -OR ($DeviceIDsToInitialize -ieq 'All') -OR ($DeviceIDsToInitialize -ieq ''))
 {
   Write-Host "Enumerating all local, writable, non-removable devices"
-  $PhysicalDriveEnumList = 1..$((get-itemproperty HKLM:SYSTEM\CurrentControlSet\Services\disk\Enum | Select -ExpandProperty Count))
+  $PhysicalDriveEnumList = 0..$((get-itemproperty HKLM:SYSTEM\CurrentControlSet\Services\disk\Enum | Select -ExpandProperty Count)-1)
 }
 Elseif ($DeviceIDsToInitialize -ne '')
 {
@@ -199,7 +199,7 @@ $DeviceIDTempList = @()
 ForEach ($DeviceID in $PhysicalDriveEnumList)
 {
   Write-host "Validating $DeviceID..."
-  if (Test-Path "HKLM:SYSTEM\CurrentControlSet\Services\disk\Enum\$DeviceID")
+  if ([bool](Get-ItemProperty -Path "HKLM:SYSTEM\CurrentControlSet\Services\disk\Enum\" -ErrorAction SilentlyContinue | Select-Object -Expand $DeviceID -ErrorAction SilentlyContinue))
   {
     $DeviceIDTempList += $DeviceID
   }
@@ -208,6 +208,7 @@ ForEach ($DeviceID in $PhysicalDriveEnumList)
      Write-Warning "Specified device `"${DeviceID}`" does not exist, skipping..." 
   }
 }
+$PhysicalDriveEnumList = $DeviceIDTempList
 
 #Only process if we end up with a value for PhysicalDriveEnumList
 If (Test-Path variable:PhysicalDriveEnumList)
