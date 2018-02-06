@@ -5,14 +5,16 @@ set -o errexit
 set -eo pipefail
 
 SCRIPT_VERSION=1.8
-SCRIPTNETLOCATION=https://raw.githubusercontent.com/DarwinJS/CloudyWindowsAutomationCode/master/InitializeDisksWithFIO.sh
+SCRIPTNETLOCATION=https://raw.githubusercontent.com/DarwinJS/DevOpsAutomationCode/master/InitializeDisksWithFIO.sh
 REPORTFILE=/var/tmp/initializediskswithfioreport.txt
 DONEMARKERFILE=/var/tmp/initializediskswithfio.done
+GITHUBURL=https://github.com/DarwinJS/DevOpsAutomationCode
 
 usage(){
   cat <<- EndOfHereDocument1
 
-  Note: Script name in below will look unusual if using oneliner to download and run help.
+  CloudyWindows.io DevOps Automation: https://github.com/DarwinJS/DevOpsAutomationCode
+  Why and How Blog Post: https://cloudywindows.com/post/BLOG_URL_HERE
 
   You must be root or able to SUDO (to list sizes of block devices)
 
@@ -37,7 +39,7 @@ usage(){
 
   Examples:
     $0    # (no args) initialize all local, writable, non-removable disk devices immediately
-    $0 -r 5 # schedule every 5 minutes to initialize all local, writable, non-removable disk devices immediately
+    $0 -r 5 # schedule every 5 minutes to initialize all local, writable, non-removable disk devices
 
     $0 -d \"sda xda\" # initialize specified devices at /dev/
     $0 -d \"/dev/sda /dev/xda\" # initialize specified devices at full device path as specified
@@ -107,8 +109,10 @@ DisplayBanner(){
 if [[ -z "${bareoutput}" ]]; then
   cat <<- EndOfHereDocument2
 
-  $0 (InitializeDisksWithFIO.sh) Version: ${SCRIPT_VERSION}
-  Updates and information: github link
+  *********************************************************
+  InitializeDisksWithFIO.sh Version: ${SCRIPT_VERSION}
+  Running From: $0
+  Updates and information: ${GITHUBURL}
 
 EndOfHereDocument2
 fi

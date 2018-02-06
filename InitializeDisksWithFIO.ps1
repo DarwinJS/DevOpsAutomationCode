@@ -1,9 +1,98 @@
 <#
-CloudyWindows.io Escalation Toolkit: http://cloudywindows.io
-#Run this directly from this location with: 
-invoke-webrequest -uri 'https://raw.githubusercontent.com/DarwinJS/CloudyWindowsAutomationCode/master/InitializeDisksWithFIO.ps1' -outfile $env:public\InitializeDisksWithFIO.ps1 ; & $env:public\InitializeDisksWithFIO.ps1
-invoke-webrequest -uri 'https://raw.githubusercontent.com/DarwinJS/CloudyWindowsAutomationCode/master/InitializeDisksWithFIO.ps1' -outfile $env:public\InitializeDisksWithFIO.ps1 ; & $env:public\InitializeDisksWithFIO.ps1 -repeatintervalminutes 1
+.SYNOPSIS
+  Initializes (full read of all bytes) AWS EBS volumes using FIO (File IO Utility).
+.DESCRIPTION
+  CloudyWindows.io DevOps Automation: https://github.com/DarwinJS/DevOpsAutomationCode
+  Why and How Blog Post: https://cloudywindows.com/post/BLOG_URL_HERE
+  invoke-webrequest -uri 'https://raw.githubusercontent.com/DarwinJS/DevOpsAutomationCode/master/InitializeDisksWithFIO.ps1' -outfile $env:public\InitializeDisksWithFIO.ps1 ; & $env:public\InitializeDisksWithFIO.ps1
+  invoke-webrequest -uri 'https://raw.githubusercontent.com/DarwinJS/DevOpsAutomationCode/master/InitializeDisksWithFIO.ps1' -outfile $env:public\InitializeDisksWithFIO.ps1 ; & $env:public\InitializeDisksWithFIO.ps1 -repeatintervalminutes 1
+.COMPONENT
+   CloudyWindows.io
+.ROLE
+  Provisioning Automation
+.PARAMETER DeviceIDsToInitialize
+  Specifies list of semi-colon seperated number ids of local Devices to initialize.  Devices appear in HKLM:SYSTEM\CurrentControlSet\Services\disk\Enum.
+  Not specifying this value or specifying 'All' results in attempting to enumerate and initialize all devices on the system.
+  Generally deviceid 0 will be the boot drive - but that is not guaranteed.
+  You do not need to initialize EBS volumes that were created as part of an instance launch - they have full performance without initializing.
+.PARAMETER Version
+  Emit version and exit.
+.PARAMETER Unschedule
+  Remove InitializeDisksWithFIO.ps1 scheduled task and script.
+.PARAMETER RepeatIntervalMinutes
+  schedule to run every x minutes.  Range: 1 to 59.
+  Use for: (a) synchcronous (parallel) execution, (b) reboot resilience, (c) run after other automation complete (max 59 mins).
+  RepeatIntervalMinutes will also update existing schedule if already scheduled.
+  RepeatIntervalMinutes also pushes source script version if you are not rerunning the local script (upgrades or downgrades to source version)
+  Once device initialization is successfully accomplished, script removes itself from scheduled tasks and from the system.
+  When RepeatIntervalMinutes is not used, the command runs asyncrhonously.
+.PARAMETER NiceLevel
+  CPU throttling supported natively by FIO.  Range is -20 through 19.
+  On Windows, values less than -15 set the process class to “High”; -1 through -15 set “Above Normal”; 
+  1 through 15 “Below Normal”; and above 15 “Idle” priority class
+.PARAMETER InvokedFromSchedule
+  Only used internally for a scheduled run of code to self-identify as having launched from a scheduled task.
+.EXAMPLE
+  invoke-webrequest -uri 'https://raw.githubusercontent.com/DarwinJS/DevOpsAutomationCode/master/InitializeDisksWithFIO.ps1' -outfile $env:public\InitializeDisksWithFIO.ps1 ; & $env:public\InitializeDisksWithFIO.ps1
+  
+  Download and run directly from github with no parameters.
+.EXAMPLE
+  invoke-webrequest -uri 'https://raw.githubusercontent.com/DarwinJS/DevOpsAutomationCode/master/InitializeDisksWithFIO.ps1' -outfile $env:public\InitializeDisksWithFIO.ps1 ; & $env:public\InitializeDisksWithFIO.ps1 -DeviceIDsToInitialize '1;3'
+  
+  Download and run directly from github WITH parameters.
+.EXAMPLE
+  invoke-webrequest -uri 'https://raw.githubusercontent.com/DarwinJS/DevOpsAutomationCode/master/InitializeDisksWithFIO.ps1' -outfile $env:public\InitializeDisksWithFIO.ps1 ; & $env:public\InitializeDisksWithFIO.ps1 -RepeatIntervalMinutes 1
 
+  If you wish to direct download and schedule the script, you must use the above command line as the method of downloading.
+.EXAMPLE
+  InitializeDisksWithFIO.ps1
+  
+  Initialize all local, writable, non-removable disk devices immediately
+.EXAMPLE
+  InitializeDisksWithFIO.ps1 -RepeatIntervalMinutes5 # schedule every 5 minutes to initialize all local, writable, non-removable disk devices
+.EXAMPLE
+  InitializeDisksWithFIO.ps1 -DeviceIDsToInitialize '1;4'
+  
+  Initialize specified device IDs
+.EXAMPLE
+  InitializeDisksWithFIO.ps1 -NiceLevel 5 
+  
+  Use specified nice cpu priority to initialize all local, writable, non-removable disk devices.
+.EXAMPLE
+  InitializeDisksWithFIO.ps1 -Version 
+  
+  Emit only script version (good for comparing whether local version is older than latest online version)
+.EXAMPLE
+  If ([version]($(invoke-webrequest -uri 'https://raw.githubusercontent.com/DarwinJS/DevOpsAutomationCode/master/InitializeDisksWithFIO.ps1' -outfile $env:temp\InitializeDisksWithFIO.ps1 ; & $env:temp\InitializeDisksWithFIO.ps1 -version)) -gt [version]($(& $env:public\InitializeDisksWithFIO.ps1 -version))) {write-host "INFO: Running an old version"}
+
+  Check if script is up to date with github version.
+.NOTES
+
+  Features:
+    Deploying Solution
+    - oneliner to download from web and run
+    - complete offline operation by copying script and installing or copying fio to image
+    - defaults to prefer using fio from path or current directory
+    - on the fly install of FIO
+    - schedule recurrent scheduled task for (only a single instance ever runs):
+      - reboot resilience - scheduled task is recurrent each x minutes and self deletes after 
+        successful completion
+      - future run - up to 59 minutes away (e.g. allow other automation to complete) 
+      - parallel run - allow automation to continue (set -RepeatIntervalMinutes 1) 
+
+    Running
+    - initialize multiple devices in parallel (default)
+    - CPU throttling (nice)
+    - skips non-existence devices
+    - takes device list (use -DeviceIDsToInitialize)
+    - if no device list, enumerates all local, writable, non-removable devices 
+      (override incorrect device detection by specifying device list)
+    - emits bare version (can be used to update or warn when a local copy is older than the latest online version)
+
+    Completion and Cleanup (when fio runs to completion)
+    - saves fio output report
+    - marks initialization done - which preempts further runs and scheduling until done file is removed
+    - removes scheduled task and copy of script
 #>
 
 Param (
@@ -18,19 +107,25 @@ Param (
   )
   
   #update to grab latest tag?
-
-  $Release = 'fio-3.1-x64'
-  $EXE = "fio.exe"
-  $URL = "https://www.bluestop.org/files/fio/releases/$Release.zip"
   $SubFolder = 'fio'
+  $EXE = "fio.exe"
+  <# Static Method
+  $Release = 'fio-3.1-x64'
+  $URL = "https://www.bluestop.org/files/fio/releases/$Release.zip"
   $LastSegment = (("$URL") -split '/') | select -last 1
+  #>
+  $LastSegment = (iwr https://www.bluestop.org/files/fio/releases).links.href | where {$_ -match 'fio-.*-x64.zip'} | sort | select -last 1
+  $Release = [io.path]::GetFileNameWithoutExtension("$LastSegment")
+  $URL = "https://www.bluestop.org/files/fio/releases/$LastSegment"
+
 
 $SharedWritableLocation="$env:public"
 $env:path += ";$pwd;$SharedWritableLocation"
 $SCRIPT_VERSION=1.1
-$SCRIPTNETLOCATION='https://raw.githubusercontent.com/DarwinJS/CloudyWindowsAutomationCode/master/InitializeDisksWithFIO.ps1'
+$SCRIPTNETLOCATION='https://raw.githubusercontent.com/DarwinJS/DevOpsAutomationCode/master/InitializeDisksWithFIO.ps1'
 $REPORTFILE="$SharedWritableLocation/initializediskswithfioreport.txt"
 $DONEMARKERFILE="$SharedWritableLocation/initializediskswithfio.done"
+$GITHUBURL="https://github.com/DarwinJS/DevOpsAutomationCode"
 
 If ($Version)
 {
@@ -39,11 +134,14 @@ If ($Version)
 }
 
 $Banner = @"
-*****************************************************
-* CloudyWindows.io Provisioning Tools:
-*    $Name - $Description
-"*****************************************************
+
+*********************************************************
+InitializeDisksWithFIO.sh Version: ${SCRIPT_VERSION}
+Running From: $($MyInvocation.MyCommand.Path)
+Updates and information: ${GITHUBURL}
+
 "@
+
 Write-Host $Banner
 
 Function Remove-SchedScriptIfItExists {
@@ -97,7 +195,21 @@ Elseif ($DeviceIDsToInitialize -ne '')
   $PhysicalDriveEnumList = [int[]]($DeviceIDsToInitialize -split ';')
 }
 
-#Only process if we were actually given a value for PhysicalDriveEnumList
+$DeviceIDTempList = @()
+ForEach ($DeviceID in $PhysicalDriveEnumList)
+{
+  Write-host "Validating $DeviceID..."
+  if (Test-Path "HKLM:SYSTEM\CurrentControlSet\Services\disk\Enum\$DeviceID")
+  {
+    $DeviceIDTempList += $DeviceID
+  }
+  Else 
+  {
+     Write-Warning "Specified device `"${DeviceID}`" does not exist, skipping..." 
+  }
+}
+
+#Only process if we end up with a value for PhysicalDriveEnumList
 If (Test-Path variable:PhysicalDriveEnumList)
 {
   Write-Host "Devices that will be initialized: $($PhysicalDriveEnumList -join ',')"
@@ -115,7 +227,7 @@ Else
   Throw "Was not able to determine a list of devices to initialize, exiting..."
 }
 
-write-host "`$command is $command"
+write-host "`$command to use is $command"
 
 if (Test-Path "${DONEMARKERFILE}")
 {
@@ -167,7 +279,7 @@ else
   Start-Process -Wait -NoNewWindow "$FIOPATHNAME" -ArgumentList "${command}" 
   If ($? -lt 1)
   {
-    Write-Host "EBS volume(s) ${DriveEnum} completed initialization, marking as done and removing cron job if it was setup."
+    Write-Host "EBS volume(s) ${DriveEnum} completed initialization, marking as done and removing scheduled task if it was setup."
     Write-Host "INFO: ${DONEMARKERFILE} would need to be removed to either run or schedule again."
     Set-content "$(get-date)" -path "${DONEMARKERFILE}"
     Remove-SchedJobIfItExists
