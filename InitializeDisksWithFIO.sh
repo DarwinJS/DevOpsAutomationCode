@@ -306,6 +306,9 @@ if [[ ! -z "${blkdevlist[*]}" ]]; then
   if [[ -e "${DONEMARKERFILE}" ]]; then
     echo "WARNING: Presence of \"${DONEMARKERFILE}\" indicates FIO has completed its run on this system, doing nothing."
     echo "INFO: ${DONEMARKERFILE} would need to be removed to either run or schedule again."
+    #Handle condition where a manual run completed initialization before the scheduled task
+    RemoveCronJobIfItExists
+    RemoveCronScriptIfItExists
     exit 0
   fi
   #We are either scheduling to run or running now...

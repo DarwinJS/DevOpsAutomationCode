@@ -155,6 +155,7 @@ Function Remove-SchedJobIfItExists {
 
 If ($Unschedule)
 {
+  Write-Host "Attempting to remove schedule and script and then exit."
   Remove-SchedJobIfItExists
   Remove-SchedScriptIfItExists
   exit 0
@@ -234,6 +235,9 @@ if (Test-Path "${DONEMARKERFILE}")
 {
   Write-Host "WARNING: Presence of `"${DONEMARKERFILE}`" indicates FIO has completed its run on this system, doing nothing."
   Write-Host  "INFO: `"${DONEMARKERFILE}`" would need to be removed to either run or schedule again."
+  #Handle condition where a manual run completed initialization before the scheduled task
+  Remove-SchedJobIfItExists
+  Remove-SchedScriptIfItExists
   exit 0
 }
 
