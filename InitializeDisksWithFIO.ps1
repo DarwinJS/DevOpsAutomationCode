@@ -121,7 +121,7 @@ Param (
 
 $SharedWritableLocation="$env:public"
 $env:path += ";$pwd;$SharedWritableLocation"
-$SCRIPT_VERSION=1.1
+$SCRIPT_VERSION=1.8
 $SCRIPTNETLOCATION='https://raw.githubusercontent.com/DarwinJS/DevOpsAutomationCode/master/InitializeDisksWithFIO.ps1'
 $REPORTFILE="$SharedWritableLocation/initializediskswithfioreport.txt"
 $DONEMARKERFILE="$SharedWritableLocation/initializediskswithfio.done"
