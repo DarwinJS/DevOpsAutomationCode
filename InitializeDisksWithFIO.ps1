@@ -266,7 +266,7 @@ if ($RepeatIntervalMinutes -ge 1)
 
   Write-Host "Scheduling: $ScheduledJobExecutionString"
 
-  schtasks.exe /create /sc MINUTE /MO 5 /tn "InitializeDisksWithFIO.ps1" /ru SYSTEM /tr "$ScheduledJobExecutionString"
+  schtasks.exe /create /sc MINUTE /MO $RepeatIntervalMinutes /tn "InitializeDisksWithFIO.ps1" /ru SYSTEM /tr "$ScheduledJobExecutionString"
   exit 0
 }
 else
