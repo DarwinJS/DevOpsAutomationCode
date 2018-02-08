@@ -93,6 +93,11 @@
     - saves fio output report
     - marks initialization done - which preempts further runs and scheduling until done file is removed
     - removes scheduled task and copy of script
+
+    Tested On
+    - PowerShell 4 (Server 2012 R2)
+    - PowerShell 5.1
+    - PowerShell Core 6.0.1
 #>
 
 Param (
@@ -143,7 +148,6 @@ Updates and information: ${GITHUBURL}
 "@
 
 Write-Host $Banner
-
 Function Remove-SchedScriptIfItExists {
   If (Test-Path "$SharedWritableLocation\InitializeDisksWithFIO.ps1")
   {Remove-Item "$SharedWritableLocation\InitializeDisksWithFIO.ps1" -Force -ErrorAction SilentlyContinue}

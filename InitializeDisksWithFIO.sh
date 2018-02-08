@@ -80,6 +80,13 @@ usage(){
     - marks initialization done - which preempts further runs and scheduling until done file is removed
     - removes cron job and copy of script in /etc/cron.d
 
+    Tested On
+    - CentOS 7
+    - Ubuntu 16.04
+    - SuSE 4.4 Leap 42
+    - Amazon Linux
+    - Amazon Linux 2
+
   Notes on Scheduling
     - If you run the script directly from a URL to schedule it, the original script code must be re-downloaded 
       to set it up in cron - the download is always attempted from the original SOURCE url even if you have rehosted this script.
