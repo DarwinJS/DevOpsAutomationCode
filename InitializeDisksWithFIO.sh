@@ -92,8 +92,7 @@ usage(){
       to set it up in cron - the download is always attempted from the original SOURCE url even if you have rehosted this script.
     - If you wish to avoid the behavior of downloading to schedule, then download a full copy of the script 
       before running the schedule command, this approach also handles a custom hosted location:
-      wget https://raw.githubusercontent.com/DarwinJS/DevOpsAutomationCode/master/InitializeDisksWithFIO.sh -O /tmp/InitializeDisksWithFIO.sh
-      bash /tmp/InitializeDisksWithFIO.sh -r 5
+      wget https://raw.githubusercontent.com/DarwinJS/DevOpsAutomationCode/master/InitializeDisksWithFIO.sh -O /tmp/InitializeDisksWithFIO.sh ; sudo bash /tmp/InitializeDisksWithFIO.sh -r 5
   
   Notes and Code for Update Checking:
     The below oneliner that gives an INFO message that the current version is not up to date.
@@ -307,7 +306,7 @@ if [[ ! -z "${blkdevlist[*]}" ]]; then
         nicecmd="--nice=${nicelevel}"
       fi
       #Customize this line if you wish to customize how FIO operates
-      command+=" --filename=${device_to_warm} ${nicecmd} --rw=read --bs=128k --iodepth=32 --ioengine=libaio --direct=1 --output ${REPORTFILE}$(basename ${device_to_warm}).txt --name=volume-initialize-$(basename ${device_to_warm})"
+      command+=" --filename=${device_to_warm} ${nicecmd} --rw=read --bs=128k --iodepth=32 --ioengine=libaio --direct=1 --output ${REPORTFILE}-device-$(basename ${device_to_warm}).txt --name=volume-initialize-$(basename ${device_to_warm})"
     fi
   done
   if [[ -e "${DONEMARKERFILE}" ]]; then
