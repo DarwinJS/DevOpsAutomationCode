@@ -6,7 +6,7 @@ set -eo pipefail
 
 SCRIPT_VERSION=1.8
 SCRIPTNETLOCATION=https://raw.githubusercontent.com/DarwinJS/DevOpsAutomationCode/master/InitializeDisksWithFIO.sh
-REPORTFILE=/var/tmp/initializediskswithfioreport.txt
+REPORTFILE=/var/tmp/initializediskswithfioreport
 DONEMARKERFILE=/var/tmp/initializediskswithfio.done
 GITHUBURL=https://github.com/DarwinJS/DevOpsAutomationCode
 
@@ -307,7 +307,7 @@ if [[ ! -z "${blkdevlist[*]}" ]]; then
         nicecmd="--nice=${nicelevel}"
       fi
       #Customize this line if you wish to customize how FIO operates
-      command+=" --filename=${device_to_warm} ${nicecmd} --rw=read --bs=128k --iodepth=32 --ioengine=libaio --direct=1 --output ${REPORTFILE} --name=volume-initialize-$(basename ${device_to_warm})"
+      command+=" --filename=${device_to_warm} ${nicecmd} --rw=read --bs=128k --iodepth=32 --ioengine=libaio --direct=1 --output ${REPORTFILE}$(basename ${device_to_warm}).txt --name=volume-initialize-$(basename ${device_to_warm})"
     fi
   done
   if [[ -e "${DONEMARKERFILE}" ]]; then

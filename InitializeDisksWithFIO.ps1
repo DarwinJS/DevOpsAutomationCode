@@ -128,7 +128,7 @@ $SharedWritableLocation="$env:public"
 $env:path += ";$pwd;$SharedWritableLocation"
 $SCRIPT_VERSION=1.8
 $SCRIPTNETLOCATION='https://raw.githubusercontent.com/DarwinJS/DevOpsAutomationCode/master/InitializeDisksWithFIO.ps1'
-$REPORTFILE="$SharedWritableLocation/initializediskswithfioreport.txt"
+$REPORTFILE="$SharedWritableLocation/initializediskswithfioreport"
 $DONEMARKERFILE="$SharedWritableLocation/initializediskswithfio.done"
 $GITHUBURL="https://github.com/DarwinJS/DevOpsAutomationCode"
 
@@ -225,7 +225,7 @@ If (Test-Path variable:PhysicalDriveEnumList)
   }
   Foreach ($DriveEnum in $PhysicalDriveEnumList)
   {
-    $command += " --filename=\\.\PHYSICALDRIVE$DriveEnum ${nicecmd} --rw=read --bs=128k --iodepth=32 --ioengine=windowsaio --direct=1 --name=volume-initialize-$DriveEnum  --output ${REPORTFILE}$DriveEnum"
+    $command += " --filename=\\.\PHYSICALDRIVE$DriveEnum ${nicecmd} --rw=read --bs=128k --iodepth=32 --ioengine=windowsaio --direct=1 --name=volume-initialize-$DriveEnum  --output ${REPORTFILE}$DriveEnum.txt"
   }
 }
 Else
