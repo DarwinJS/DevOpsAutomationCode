@@ -49,7 +49,7 @@ usage(){
     $0 -b -v # emit only script version (good for comparing whether local version is older than latest online version)
     
     DOWNLOAD AND RUN FROM GITHUB:
-    wget https://raw.githubusercontent.com/DarwinJS/CloudyWindowsAutomationCode/master/InitializeDisksWithFIO.sh -O /tmp/InitializeDisksWithFIO.sh ; sudo bash /tmp/InitializeDisksWithFIO.sh -b -v
+    wget https://raw.githubusercontent.com/DarwinJS/DevOpsAutomationCode/master/InitializeDisksWithFIO.sh -O /tmp/InitializeDisksWithFIO.sh ; sudo bash /tmp/InitializeDisksWithFIO.sh -b -v
 
   Features:
     Deploying Solution
@@ -92,13 +92,13 @@ usage(){
       to set it up in cron - the download is always attempted from the original SOURCE url even if you have rehosted this script.
     - If you wish to avoid the behavior of downloading to schedule, then download a full copy of the script 
       before running the schedule command, this approach also handles a custom hosted location:
-      wget https://raw.githubusercontent.com/DarwinJS/CloudyWindowsAutomationCode/master/InitializeDisksWithFIO.sh -O /tmp/InitializeDisksWithFIO.sh
+      wget https://raw.githubusercontent.com/DarwinJS/DevOpsAutomationCode/master/InitializeDisksWithFIO.sh -O /tmp/InitializeDisksWithFIO.sh
       bash /tmp/InitializeDisksWithFIO.sh -r 5
   
   Notes and Code for Update Checking:
     The below oneliner that gives an INFO message that the current version is not up to date.
     Note local persisted location "/opt/scripts" should be updated with where you stage the script locally.
-    [[ `echo "$(sudo bash /opt/scripts/InitializeDisksWithFIO.sh -b -v) $(wget https://raw.githubusercontent.com/DarwinJS/CloudyWindowsAutomationCode/master/InitializeDisksWithFIO.sh -O /tmp/InitializeDisksWithFIO.sh ; sudo bash /tmp/InitializeDisksWithFIO.sh -b -v)" | awk '{print ($1 <= $2)}'` == 1 ]] && echo "INFO: Running an old version"
+    [[ `echo "$(sudo bash /opt/scripts/InitializeDisksWithFIO.sh -b -v) $(wget https://raw.githubusercontent.com/DarwinJS/DevOpsAutomationCode/master/InitializeDisksWithFIO.sh -O /tmp/InitializeDisksWithFIO.sh ; sudo bash /tmp/InitializeDisksWithFIO.sh -b -v)" | awk '{print ($1 <= $2)}'` == 1 ]] && echo "INFO: Running an old version"
 
 EndOfHereDocument1
 }
