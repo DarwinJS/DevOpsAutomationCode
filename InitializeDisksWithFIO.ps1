@@ -1,6 +1,7 @@
 <#
 .SYNOPSIS
   Initializes (full read of all bytes) AWS EBS volumes using FIO (File IO Utility).
+  See this post for full details on why this code is helpful: https://cloudywindows.io/post/fully-automated-on-demand-ebs-initialization-in-both-bash-for-linux-and-powershell-for-windows/
 .DESCRIPTION
   CloudyWindows.io DevOps Automation: https://github.com/DarwinJS/DevOpsAutomationCode
   Why and How Blog Post: https://cloudywindows.com/post/BLOG_URL_HERE

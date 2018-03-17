@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 #See usage() function below for help and features description
+#See this post for full details on why this code is helpful: https://cloudywindows.io/post/fully-automated-on-demand-ebs-initialization-in-both-bash-for-linux-and-powershell-for-windows/
 
 set -o errexit
 set -eo pipefail
