@@ -4,7 +4,7 @@
   See this post for full details on why this code is helpful: https://cloudywindows.io/post/fully-automated-on-demand-ebs-initialization-in-both-bash-for-linux-and-powershell-for-windows/
 .DESCRIPTION
   CloudyWindows.io DevOps Automation: https://github.com/DarwinJS/DevOpsAutomationCode
-  Why and How Blog Post: https://cloudywindows.com/post/BLOG_URL_HERE
+  Why and How Blog Post: https://cloudywindows.io/post/culling-dead-computer-records-from-ad-with-a-scheduled-powershell-oneliner/
   invoke-webrequest -uri 'https://raw.githubusercontent.com/DarwinJS/DevOpsAutomationCode/master/InitializeDisksWithFIO.ps1' -outfile $env:public\InitializeDisksWithFIO.ps1 ; & $env:public\InitializeDisksWithFIO.ps1
   invoke-webrequest -uri 'https://raw.githubusercontent.com/DarwinJS/DevOpsAutomationCode/master/InitializeDisksWithFIO.ps1' -outfile $env:public\InitializeDisksWithFIO.ps1 ; & $env:public\InitializeDisksWithFIO.ps1 -repeatintervalminutes 1
 .COMPONENT
