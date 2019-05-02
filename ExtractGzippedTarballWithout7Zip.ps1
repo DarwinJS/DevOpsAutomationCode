@@ -1,5 +1,5 @@
 
-#  See this post for full details on why this code is helpful: https://cloudywindows.io/post/no-7zip-allowed-extracting-the-java-gzipped-tarball-on-windows-to-create-an-isolated-zero-footprint-java-install-for-cis-cat-pro/
+#  See this post for full details on why this code is helpful: https://cloudywindows.io/post/no-7zip-allowed-extracting-oracles-gzipped-java-tarball-on-windows-to-create-an-isolated-zero-footprint-java-install-for-cis-cat-pro/
 
 #This code should work on PowerShell 2 and later
 #Acquire and unzip the nupkg file containing the assembly
