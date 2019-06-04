@@ -9,7 +9,7 @@ Parameters:
   AAAReadmeBlogPost:
     Description: Read the following post to learn why this template is helpful - Darwin.
     Type: String
-    Default: https://cloudywindows.io
+    Default: https://cloudywindows.io/post/asg-lifecycle-hook-for-linux-kernel-patching-with-a-reboot-in-aws-autoscaling-groups/
   AMIID:
     Description: >
       AMI ID - For testing pick an older one that will need a kernel patch for sure.
