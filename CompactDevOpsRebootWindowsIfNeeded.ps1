@@ -2,7 +2,7 @@
 <#
 See this post for full details on why this code is helpful: https://cloudywindows.io/post/
 
-This code is a compact (small enough to be put in the script you need to use it within), DevOps-ish version of Get-PendingReboot.
+This code is a compact (small enough to be put in the script you need to use it within or inline in orchestration / IaC), DevOps-ish version of Get-PendingReboot.
 For compactness some sacrifices were made - it does not detect SCCM reboots and does not work remotely
 On the plus side it detects reboots pending from Windows feature install / uninstall operations
 It uses "shutdown.exe" because Restart-Computer frequently causes bad terminations of whatever called this.

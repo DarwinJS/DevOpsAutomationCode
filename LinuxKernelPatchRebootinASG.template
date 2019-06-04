@@ -1,0 +1,226 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Reboot Linux to take Amazon Linux Kernel Update During ASG Scaling.
+  Supports
+  * CF Update for Monthly Server Patching Via Server Replacmeent
+  * TroubleShooting mode to enable Session Manager Connection
+Parameters:
+  AAAReadmeBlogPost:
+    Description: Read the following post to learn why this template is helpful - Darwin.
+    Type: String
+    Default: https://cloudywindows.io
+  AMIID:
+    Description: >
+      AMI ID - For testing pick an older one that will need a kernel patch for sure.
+      For Amazon Linux 1 that won't be too hard ;)
+    Type: String
+    Default: ami-04768381bf606e2b3
+  DesiredCapacity:
+    Description: >
+      ASG Desired Capacity - 4 is a good number for testing rolling replacement patching.  
+      1 is sufficient to observe how the userdata code processes to accomplish the yum update and reboot before the lifecycle hook.
+    Type: Number
+    Default: 4
+  PatchRunDate:
+    Description: >
+      Enter the deploy or update date - changing this is required to force a rolling replacement for patching.
+      It has a secondary purpose as a convenient way to document the patch date as an environment variable and an EC2 tag.  
+      It is just a string that you could set to any value and has no role in selecting patches or anything else - but it 
+      does need to change from it's previous setting in order for the update to be forced.
+    Type: String
+    Default: 2019-06-04
+  TroubleShootingMode:
+    Description: Enables troubleshooting - currently this just enables SSM so Session Manager can be used to logon to the machine(s).
+    Type: String
+    Default: false
+    AllowedValues: 
+      - true
+      - false    
+Conditions: 
+  CreateDebugResources: !Equals [ !Ref TroubleShootingMode, "true" ]
+Resources:
+  ASGRebootRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Path: /
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+        - Effect: Allow
+          Action: sts:AssumeRole
+          Principal:
+            Service:
+              - ec2.amazonaws.com
+      ManagedPolicyArns:
+        !If
+          - CreateDebugResources
+          - 
+            - arn:aws:iam::aws:policy/service-role/AmazonSSMMaintenanceWindowRole
+            - arn:aws:iam::aws:policy/service-role/AmazonSSMAutomationRole
+            - arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM        
+          - !Ref "AWS::NoValue"
+
+  ASGInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: /
+      Roles: [ !Ref ASGRebootRole ]
+
+  ASGSelfAccessPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: ASGSelfAccessPolicy
+      Roles: [ !Ref ASGRebootRole ]
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+        - Sid: ASGSelfAccessPolicy
+          Resource: "*"
+          Effect: Allow
+          Action:
+            - iam:ListAccountAliases
+            - autoscaling:DescribeAutoScalingInstances
+            - autoscaling:DescribeAutoScalingGroups
+            - autoscaling:DescribeLifecycle*                   
+        - Sid: ASGLifeCycleAccessPolicy
+          Resource: !Sub 'arn:${AWS::Partition}:autoscaling:${AWS::Region}:${AWS::AccountId}:autoScalingGroup:*:autoScalingGroupName/${AWS::StackName}'
+          Effect: Allow
+          Action:
+            - autoscaling:CompleteLifecycleAction
+            - autoscaling:RecordLifecycleActionHeartbeat
+          #To use a tag condition, update Resource to '*' and uncomment this segement
+          #Condition:
+          #  StringEquals:
+          #    autoscaling :ResourceTag/Name: !Ref AWS::StackName
+
+  EC2SelfAccessPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: EC2SelfAccessPolicy
+      Roles: [ !Ref ASGRebootRole ]
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+        - Sid: EC2SelfAccessPolicy
+          Resource: "*"
+          Effect: Allow
+          Action: 
+            - ec2:DescribeInstances
+            - ec2:DescribeTags
+  
+  LinuxASG:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    CreationPolicy:
+      AutoScalingCreationPolicy:
+        MinSuccessfulInstancesPercent: 75
+      ResourceSignal:
+        Timeout: PT15M
+        Count: !Ref DesiredCapacity
+    # Decide which UpdatePolicy to uncomment to see this template work with either one.
+    UpdatePolicy:
+      AutoScalingRollingUpdate:
+        MaxBatchSize: 2
+        MinInstancesInService: 1
+        PauseTime: PT0M30S
+    #UpdatePolicy:
+    #  AutoScalingReplacingUpdate:
+    #    WillReplace: 'true'
+    Properties:
+      AutoScalingGroupName: !Ref AWS::StackName
+      HealthCheckGracePeriod: 3
+      AvailabilityZones:
+        Fn::GetAZs:
+          Ref: AWS::Region
+      MinSize: '1'
+      MaxSize: '10'
+      DesiredCapacity: !Ref DesiredCapacity
+      LaunchConfigurationName:
+        Ref: ASGLaunchConfig
+      LifecycleHookSpecificationList:
+      - LifecycleTransition: 'autoscaling:EC2_INSTANCE_LAUNCHING'
+        LifecycleHookName: yum-update-reboot
+        HeartbeatTimeout: 3600
+      Tags:
+      - Key: Name
+        Value: !Ref AWS::StackName
+        PropagateAtLaunch: 'True'
+      - Key: PatchRunDate
+        Value: !Ref PatchRunDate
+        PropagateAtLaunch: 'True'
+  
+  ASGLaunchConfig:
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Properties:
+      ImageId:
+        Ref: AMIID
+      InstanceType: t2.small
+      IamInstanceProfile: !Ref ASGInstanceProfile
+      BlockDeviceMappings:
+      - DeviceName: "/dev/xvda"
+        Ebs:
+          VolumeType: 'gp2'
+          VolumeSize: '30'
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          PatchRunDate="${PatchRunDate}" #Forces change for patching rolling replacement
+          MYINSTANCEID="$(wget -q -O - http://169.254.169.254/latest/meta-data/instance-id)"
+          MYREGION="$(curl -s 169.254.169.254/latest/meta-data/placement/availability-zone | sed 's/.$//')"
+          NAMEOFASG=$(aws ec2 describe-tags --region $MYREGION --filters {"Name=resource-id,Values=$MYINSTANCEID","Name=key,Values=aws:autoscaling:groupName"} --output=text | cut -f5)
+          PATCHDONEFLAG=/root/patchingrebootwasdone.flg
+          echo "[$(date '+%d/%m/%Y_%H:%M:%S')] USERDATA_SCRIPT: Processing userdata script on instance: $MYINSTANCEID"
+          echo "     in Region: $MYREGION, launched from ASG: $NAMEOFASG"
+          yum update yum-utils
+          uname -r
+          if [ ! -z $NAMEOFASG ]; then
+            echo "[$(date '+%d/%m/%Y_%H:%M:%S')] USERDATA_SCRIPT: Instance is in an ASG, will process lifecycle hooks"
+            echo "[$(date '+%d/%m/%Y_%H:%M:%S')] USERDATA_SCRIPT: Listing hook to verify permissions and hook presence"
+            aws --region ${AWS::Region} autoscaling describe-lifecycle-hooks --auto-scaling-group-name $NAMEOFASG
+          else
+            echo "USERDATA_SCRIPT: Instance is not in an ASG or if it is, the instance profile used does not have permissions to its own tags."
+          fi
+
+          if [ -f $PATCHDONEFLAG ]; then
+            echo "[$(date '+%d/%m/%Y_%H:%M:%S')] USERDATA_SCRIPT: Completed a post-patching reboot, skipping patching check..."
+          else
+            echo "[$(date '+%d/%m/%Y_%H:%M:%S')] USERDATA_SCRIPT: Lets patch (including the kernel if necessary)..."
+            yum update -y
+            echo "[$(date '+%d/%m/%Y_%H:%M:%S')] USERDATA_SCRIPT: Patching is done..."
+            needs-restarting -r 
+            if [ $? -gt 0 ]; then
+              echo "[$(date '+%d/%m/%Y_%H:%M:%S')] USERDATA_SCRIPT: Detected that a reboot is required, rebooting..."
+              echo "[$(date '+%d/%m/%Y_%H:%M:%S')] USERDATA_SCRIPT: Resetting userdata semaphore..."
+              rm /var/lib/cloud/instances/*/sem/config_scripts_user
+              touch $PATCHDONEFLAG
+              reboot
+              echo "[$(date '+%d/%m/%Y_%H:%M:%S')] USERDATA_SCRIPT: Waiting for reboot to complete..."
+              sleep 30
+            fi
+          fi
+          
+          echo "[$(date '+%d/%m/%Y_%H:%M:%S')] USERDATA_SCRIPT: Continuing..."
+          if [ ! -z $NAMEOFASG ]; then
+            echo "[$(date '+%d/%m/%Y_%H:%M:%S')] USERDATA_SCRIPT: Sending a heart beat to reset the timeout counter while doing more things..."
+            aws --region ${AWS::Region} autoscaling record-lifecycle-action-heartbeat --instance-id $MYINSTANCEID --lifecycle-hook-name yum-update-reboot --auto-scaling-group-name $NAMEOFASG
+          fi
+
+          echo "[$(date '+%d/%m/%Y_%H:%M:%S')] USERDATA_SCRIPT: Code Deploy Install..."
+          cd /tmp
+          aws s3 cp s3://aws-codedeploy-us-east-1/latest/install . --region ${AWS::Region}
+          chmod +x ./install
+          ./install auto
+
+          if [[ "${TroubleShootingMode}" == "true" ]]; then
+            echo "[$(date '+%d/%m/%Y_%H:%M:%S')] USERDATA_SCRIPT: TroubleShootingMode is true - Installing SSM for Session Manager Access..."
+            sudo yum install -y https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/linux_amd64/amazon-ssm-agent.rpm
+            sudo start amazon-ssm-agent
+          fi
+          
+          if [ ! -z $NAMEOFASG ]; then
+            echo "[$(date '+%d/%m/%Y_%H:%M:%S')] USERDATA_SCRIPT: Completing lifecycle action hook so that ASG knows we are ready to be placed InService..."
+            aws --region ${AWS::Region} autoscaling complete-lifecycle-action --lifecycle-action-result CONTINUE --instance-id $MYINSTANCEID --lifecycle-hook-name yum-update-reboot --auto-scaling-group-name $NAMEOFASG
+          fi
+          
+          echo "[$(date '+%d/%m/%Y_%H:%M:%S')] USERDATA_SCRIPT: Cfn-signaling success..."
+          /opt/aws/bin/cfn-signal --success true --stack ${AWS::StackName} --resource LinuxASG --region ${AWS::Region}
