@@ -139,7 +139,7 @@ Resources:
         Ref: ASGLaunchConfig
       LifecycleHookSpecificationList:
       - LifecycleTransition: 'autoscaling:EC2_INSTANCE_LAUNCHING'
-        LifecycleHookName: yum-update-reboot
+        LifecycleHookName: linux-patching-reboot
         HeartbeatTimeout: 3600
       Tags:
       - Key: Name
@@ -164,63 +164,74 @@ Resources:
       UserData:
         Fn::Base64: !Sub |
           #!/bin/bash
-          PatchRunDate="${PatchRunDate}" #Forces change for patching rolling replacement
+          LAST_CF_PATCH_RUN="${PatchRunDate}" #Forces change for patching rolling replacement and documents last CF triggered patching
+          ACTUAL_PATCH_DATE=$(date +%Y-%m-%d)
           MYINSTANCEID="$(wget -q -O - http://169.254.169.254/latest/meta-data/instance-id)"
           MYREGION="$(curl -s 169.254.169.254/latest/meta-data/placement/availability-zone | sed 's/.$//')"
           NAMEOFASG=$(aws ec2 describe-tags --region $MYREGION --filters {"Name=resource-id,Values=$MYINSTANCEID","Name=key,Values=aws:autoscaling:groupName"} --output=text | cut -f5)
           PATCHDONEFLAG=/root/patchingrebootwasdone.flg
-          echo "[$(date '+%d/%m/%Y_%H:%M:%S')] USERDATA_SCRIPT: Processing userdata script on instance: $MYINSTANCEID"
-          echo "     in Region: $MYREGION, launched from ASG: $NAMEOFASG"
+          function logit() {
+            LOGSTRING="$(date +"%_b %e %H:%M:%S") $(hostname) USERDATA_SCRIPT: $1"
+            echo "$LOGSTRING"
+            #For CloudFormationcat, if you already collect /var/log/cloud-init-output.log, then you could mute the next logging line
+            echo "$LOGSTRING" >> /var/log/messages
+          }
+          logit "Processing userdata script on instance: $MYINSTANCEID"
+          logit "Operating in Region: $MYREGION, launched from ASG: $NAMEOFASG"
           yum update yum-utils
           uname -r
           if [ ! -z $NAMEOFASG ]; then
-            echo "[$(date '+%d/%m/%Y_%H:%M:%S')] USERDATA_SCRIPT: Instance is in an ASG, will process lifecycle hooks"
-            echo "[$(date '+%d/%m/%Y_%H:%M:%S')] USERDATA_SCRIPT: Listing hook to verify permissions and hook presence"
+            logit "Instance is in an ASG, will process lifecycle hooks"
+            logit "Listing hook to verify permissions and hook presence"
             aws --region ${AWS::Region} autoscaling describe-lifecycle-hooks --auto-scaling-group-name $NAMEOFASG
           else
-            echo "USERDATA_SCRIPT: Instance is not in an ASG or if it is, the instance profile used does not have permissions to its own tags."
+            logit "Instance is not in an ASG or if it is, the instance profile used does not have permissions to its own tags."
           fi
 
           if [ -f $PATCHDONEFLAG ]; then
-            echo "[$(date '+%d/%m/%Y_%H:%M:%S')] USERDATA_SCRIPT: Completed a post-patching reboot, skipping patching check..."
+            logit "Completed a post-patching reboot, skipping patching check..."
           else
-            echo "[$(date '+%d/%m/%Y_%H:%M:%S')] USERDATA_SCRIPT: Lets patch (including the kernel if necessary)..."
+            logit "Lets patch (including the kernel if necessary)..."
             yum update -y
-            echo "[$(date '+%d/%m/%Y_%H:%M:%S')] USERDATA_SCRIPT: Patching is done..."
+            logit "ACTUAL_PATCH_DATE may be newer because this instance was autoscaled after the LAST_CF_PATCH_RUN"
+            logit "LAST_CF_PATCH_RUN: $LAST_CF_PATCH_RUN"
+            echo "export LAST_CF_PATCH_RUN=$LAST_CF_PATCH_RUN" >> /etc/profile.d/lastpatchingdata.sh
+            logit "ACTUAL_PATCH_DATE: $ACTUAL_PATCH_DATE"
+            echo "export ACTUAL_PATCH_DATE=$ACTUAL_PATCH_DATE" >> /etc/profile.d/lastpatchingdata.sh
             needs-restarting -r 
             if [ $? -gt 0 ]; then
-              echo "[$(date '+%d/%m/%Y_%H:%M:%S')] USERDATA_SCRIPT: Detected that a reboot is required, rebooting..."
-              echo "[$(date '+%d/%m/%Y_%H:%M:%S')] USERDATA_SCRIPT: Resetting userdata semaphore..."
+              logit "Detected that a reboot is required, rebooting..."
+              logit "Resetting userdata semaphore..."
               rm /var/lib/cloud/instances/*/sem/config_scripts_user
               touch $PATCHDONEFLAG
               reboot
-              echo "[$(date '+%d/%m/%Y_%H:%M:%S')] USERDATA_SCRIPT: Waiting for reboot to complete..."
+              logit "Waiting for reboot to complete..."
               sleep 30
             fi
           fi
           
-          echo "[$(date '+%d/%m/%Y_%H:%M:%S')] USERDATA_SCRIPT: Continuing..."
+          logit "Continuing..."
           if [ ! -z $NAMEOFASG ]; then
-            echo "[$(date '+%d/%m/%Y_%H:%M:%S')] USERDATA_SCRIPT: Sending a heart beat to reset the timeout counter while doing more things..."
-            aws --region ${AWS::Region} autoscaling record-lifecycle-action-heartbeat --instance-id $MYINSTANCEID --lifecycle-hook-name yum-update-reboot --auto-scaling-group-name $NAMEOFASG
+            logit "Sending a heart beat to reset the timeout counter while doing more things..."
+            aws --region ${AWS::Region} autoscaling record-lifecycle-action-heartbeat --instance-id $MYINSTANCEID --lifecycle-hook-name linux-patching-reboot --auto-scaling-group-name $NAMEOFASG
           fi
 
-          echo "[$(date '+%d/%m/%Y_%H:%M:%S')] USERDATA_SCRIPT: Code Deploy Install..."
+          logit "Code Deploy Install..."
           cd /tmp
           aws s3 cp s3://aws-codedeploy-us-east-1/latest/install . --region ${AWS::Region}
           chmod +x ./install
           ./install auto
 
           if [[ "${TroubleShootingMode}" == "true" ]]; then
-            echo "[$(date '+%d/%m/%Y_%H:%M:%S')] USERDATA_SCRIPT: TroubleShootingMode is true - Installing SSM for Session Manager Access..."
+            logit "TroubleShootingMode is true - Installing SSM for Session Manager Access..."
             sudo yum install -y https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/linux_amd64/amazon-ssm-agent.rpm
             sudo start amazon-ssm-agent
           fi
           
           if [ ! -z $NAMEOFASG ]; then
-            echo "[$(date '+%d/%m/%Y_%H:%M:%S')] USERDATA_SCRIPT: Completing lifecycle action hook so that ASG knows we are ready to be placed InService..."
-            aws --region ${AWS::Region} autoscaling complete-lifecycle-action --lifecycle-action-result CONTINUE --instance-id $MYINSTANCEID --lifecycle-hook-name yum-update-reboot --auto-scaling-group-name $NAMEOFASG
+            logit "Completing lifecycle action hook so that ASG knows we are ready to be placed InService..."
+            aws --region ${AWS::Region} autoscaling complete-lifecycle-action --lifecycle-action-result CONTINUE --instance-id $MYINSTANCEID --lifecycle-hook-name linux-patching-reboot --auto-scaling-group-name $NAMEOFASG
           fi
           
-          echo "[$(date '+%d/%m/%Y_%H:%M:%S')] USERDATA_SCRIPT: Cfn-signaling success..."
+          logit "Cfn-signaling success..."
           /opt/aws/bin/cfn-signal --success true --stack ${AWS::StackName} --resource LinuxASG --region ${AWS::Region}
