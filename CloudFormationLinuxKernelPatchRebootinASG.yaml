@@ -145,7 +145,7 @@ Resources:
       - Key: Name
         Value: !Ref AWS::StackName
         PropagateAtLaunch: 'True'
-      - Key: PatchRunDate
+      - Key: LAST_CF_PATCH_RUN
         Value: !Ref PatchRunDate
         PropagateAtLaunch: 'True'
   
