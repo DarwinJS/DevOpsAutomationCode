@@ -18,7 +18,7 @@ Parameters:
     Default: ami-04768381bf606e2b3
   DesiredCapacity:
     Description: >
-      ASG Desired Capacity - 4 is a good number for testing rolling replacement patching.  
+      ASG Desired Capacity - 4 is a good number for testing updates.  
       1 is sufficient to observe how the userdata code processes to accomplish the yum update and reboot before the lifecycle hook.
     Type: Number
     Default: 4
@@ -37,8 +37,16 @@ Parameters:
     AllowedValues: 
       - true
       - false    
+  UpdateType:
+    Description: (Only Applies To Updates) Whether ASG Update Should Do a Rolling Update or an ASG Replacement
+    Type: String
+    Default: RollingThroughInstances
+    AllowedValues: 
+      - ReplaceEntireASG
+      - RollingThroughInstances
 Conditions: 
   CreateDebugResources: !Equals [ !Ref TroubleShootingMode, "true" ]
+  ReplaceEntireASG: !Equals [ !Ref UpdateType, "ReplaceEntireASG" ]
 Resources:
   ASGRebootRole:
     Type: AWS::IAM::Role
@@ -84,7 +92,7 @@ Resources:
             - autoscaling:DescribeAutoScalingGroups
             - autoscaling:DescribeLifecycle*                   
         - Sid: ASGLifeCycleAccessPolicy
-          Resource: !Sub 'arn:${AWS::Partition}:autoscaling:${AWS::Region}:${AWS::AccountId}:autoScalingGroup:*:autoScalingGroupName/${AWS::StackName}'
+          Resource: !Sub 'arn:${AWS::Partition}:autoscaling:${AWS::Region}:${AWS::AccountId}:autoScalingGroup:*:autoScalingGroupName/${AWS::StackName}*'
           Effect: Allow
           Action:
             - autoscaling:CompleteLifecycleAction
@@ -123,11 +131,13 @@ Resources:
         MaxBatchSize: 2
         MinInstancesInService: 1
         PauseTime: PT0M30S
-    #UpdatePolicy:
-    #  AutoScalingReplacingUpdate:
-    #    WillReplace: 'true'
+      AutoScalingReplacingUpdate:
+        # WillReplace=True will make ReplacingUpdate take precedent over RollingUpdate
+        !If
+          - ReplaceEntireASG
+          - WillReplace: 'true'
+          - WillReplace: 'false'
     Properties:
-      AutoScalingGroupName: !Ref AWS::StackName
       HealthCheckGracePeriod: 3
       AvailabilityZones:
         Fn::GetAZs:
