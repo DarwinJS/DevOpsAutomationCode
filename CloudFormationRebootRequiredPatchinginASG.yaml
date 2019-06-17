@@ -1,7 +1,7 @@
 ---
 AWSTemplateFormatVersion: '2010-09-09'
 Description: >
-  Reboot Linux to take Amazon Linux Kernel Update During ASG Scaling.
+  Reboot instances to take critical, reboot required patches during ASG scaling (e.g. Amazon Linux Kernel Updates)
   Supports
   * CF Update for Monthly Server Patching Via Server Replacmeent
   * TroubleShooting mode to enable Session Manager Connection
@@ -12,7 +12,7 @@ Parameters:
     Default: https://cloudywindows.io/post/asg-lifecycle-hook-for-linux-kernel-patching-with-a-reboot-in-aws-autoscaling-groups/
   AMIID:
     Description: >
-      AMI ID - For testing pick an older one that will need a kernel patch for sure.
+      AMI ID - For testing pick an older one that will need a kernel patch or other reboot required patch for sure.
       For Amazon Linux 1 that won't be too hard ;)
     Type: String
     Default: ami-04768381bf606e2b3
@@ -38,15 +38,23 @@ Parameters:
       - true
       - false    
   UpdateType:
-    Description: (Only Applies To Updates) Whether ASG Update Should Do a Rolling Update or an ASG Replacement
+    Description: (Only Applies To Updates) Whether ASG Update Should Do a Rolling Update or an ASG Replacement.
     Type: String
     Default: RollingThroughInstances
     AllowedValues: 
       - ReplaceEntireASG
       - RollingThroughInstances
+  SetupPseudoWebApp:
+    Description: Puts up apache with a simple landing page.  Warning, adds an ingress for port 80 to the VPC default security group.
+    Type: String
+    Default: false
+    AllowedValues: 
+      - true
+      - false    
 Conditions: 
   CreateDebugResources: !Equals [ !Ref TroubleShootingMode, "true" ]
   ReplaceEntireASG: !Equals [ !Ref UpdateType, "ReplaceEntireASG" ]
+  SetupPseudoWebApp: !Equals [ !Ref SetupPseudoWebApp, "true" ]
 Resources:
   ASGRebootRole:
     Type: AWS::IAM::Role
@@ -117,7 +125,17 @@ Resources:
             - ec2:DescribeInstances
             - ec2:DescribeTags
   
-  LinuxASG:
+  WebPlusDefaultSecurityGroupSelfIngress:
+    Type: 'AWS::EC2::SecurityGroupIngress'
+    Condition: SetupPseudoWebApp
+    Properties:
+      GroupName: default
+      IpProtocol: tcp
+      FromPort: 80
+      ToPort: 80
+      CidrIp: 0.0.0.0/0
+
+  InstanceASG:
     Type: AWS::AutoScaling::AutoScalingGroup
     CreationPolicy:
       AutoScalingCreationPolicy:
@@ -130,7 +148,15 @@ Resources:
       AutoScalingRollingUpdate:
         MaxBatchSize: 2
         MinInstancesInService: 1
+        MinSuccessfulInstancesPercent: 75
+        WaitOnResourceSignals: true
         PauseTime: PT0M30S
+        SuspendProcesses:
+          - HealthCheck
+          - ReplaceUnhealthy
+          - AZRebalance
+          - AlarmNotification
+          - ScheduledActions
       AutoScalingReplacingUpdate:
         # WillReplace=True will make ReplacingUpdate take precedent over RollingUpdate
         !If
@@ -149,7 +175,7 @@ Resources:
         Ref: ASGLaunchConfig
       LifecycleHookSpecificationList:
       - LifecycleTransition: 'autoscaling:EC2_INSTANCE_LAUNCHING'
-        LifecycleHookName: linux-patching-reboot
+        LifecycleHookName: instance-patching-reboot
         HeartbeatTimeout: 3600
       Tags:
       - Key: Name
@@ -165,7 +191,7 @@ Resources:
       ImageId:
         Ref: AMIID
       InstanceType: t2.small
-      IamInstanceProfile: !Ref ASGInstanceProfile
+      IamInstanceProfile: !Ref ASGInstanceProfile    
       BlockDeviceMappings:
       - DeviceName: "/dev/xvda"
         Ebs:
@@ -183,7 +209,7 @@ Resources:
           function logit() {
             LOGSTRING="$(date +"%_b %e %H:%M:%S") $(hostname) USERDATA_SCRIPT: $1"
             echo "$LOGSTRING"
-            #For CloudFormationcat, if you already collect /var/log/cloud-init-output.log, then you could mute the next logging line
+            #For CloudFormation, if you already collect /var/log/cloud-init-output.log, then you could mute the next logging line
             echo "$LOGSTRING" >> /var/log/messages
           }
           logit "Processing userdata script on instance: $MYINSTANCEID"
@@ -223,7 +249,25 @@ Resources:
           logit "Continuing..."
           if [ ! -z $NAMEOFASG ]; then
             logit "Sending a heart beat to reset the timeout counter while doing more things..."
-            aws --region ${AWS::Region} autoscaling record-lifecycle-action-heartbeat --instance-id $MYINSTANCEID --lifecycle-hook-name linux-patching-reboot --auto-scaling-group-name $NAMEOFASG
+            aws --region ${AWS::Region} autoscaling record-lifecycle-action-heartbeat --instance-id $MYINSTANCEID --lifecycle-hook-name instance-patching-reboot --auto-scaling-group-name $NAMEOFASG
+          fi
+
+          if [[ "${SetupPseudoWebApp}" == "true" ]]; then
+            logit "Installing Web Application (To Emulate a Real Software Stack)"
+            yum install -y httpd
+            service httpd start
+            chkconfig httpd on
+            
+            cat << HTMLHomePage > /var/www/html/index.html
+            <html><head><title>CloudyWindows.io ASG With Lifecycle Hooks</title></head>
+            <body>
+            <p><A HREF="https://cloudywindows.io/post/asg-lifecycle-hook-for-linux-kernel-patching-with-a-reboot-in-aws-autoscaling-groups/">Check Out The Blog Post For This Template!</A>
+            <BR><BR>Page retrieved from load balanced instance: $MYINSTANCEID 
+            <BR>in ASG: $NAMEOFASG
+            <BR>As a part of CF Stack: ${AWS::StackName}
+            <BR>with LAST_CF_PATCH_RUN: $LAST_CF_PATCH_RUN and ACTUAL_PATCH_DATE: $ACTUAL_PATCH_DATE</p>            </body>
+            </html>
+          HTMLHomePage
           fi
 
           logit "Code Deploy Install..."
@@ -240,8 +284,8 @@ Resources:
           
           if [ ! -z $NAMEOFASG ]; then
             logit "Completing lifecycle action hook so that ASG knows we are ready to be placed InService..."
-            aws --region ${AWS::Region} autoscaling complete-lifecycle-action --lifecycle-action-result CONTINUE --instance-id $MYINSTANCEID --lifecycle-hook-name linux-patching-reboot --auto-scaling-group-name $NAMEOFASG
+            aws --region ${AWS::Region} autoscaling complete-lifecycle-action --lifecycle-action-result CONTINUE --instance-id $MYINSTANCEID --lifecycle-hook-name instance-patching-reboot --auto-scaling-group-name $NAMEOFASG
           fi
           
           logit "Cfn-signaling success..."
-          /opt/aws/bin/cfn-signal --success true --stack ${AWS::StackName} --resource LinuxASG --region ${AWS::Region}
+          /opt/aws/bin/cfn-signal --success true --stack ${AWS::StackName} --resource InstanceASG --region ${AWS::Region}
