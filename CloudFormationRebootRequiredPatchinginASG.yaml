@@ -1,15 +1,25 @@
 ---
 AWSTemplateFormatVersion: '2010-09-09'
 Description: >
-  Reboot instances to take critical, reboot required patches during ASG scaling (e.g. Amazon Linux Kernel Updates)
+  Demonstrates:
+  * Reboot instances to take critical, reboot required patches during ASG scaling (e.g. Amazon Linux Kernel Updates)
   Supports
-  * CF Update for Monthly Server Patching Via Server Replacmeent
-  * TroubleShooting mode to enable Session Manager Connection
+      * CF Update for Monthly Server Patching Via Server Replacmeent
+      * TroubleShooting mode to enable Session Manager Connection
+  * Parameter (ELBName) that is
+      * Optional
+      * can be sourced from a ParentStack Import 
+      * OR sourced directly as a parameter 
+      * Parameter overrides parent stack if both are present
 Parameters:
   AAAReadmeBlogPost:
     Description: Read the following post to learn why this template is helpful - Darwin.
     Type: String
     Default: https://cloudywindows.io/post/asg-lifecycle-hook-for-linux-kernel-patching-with-a-reboot-in-aws-autoscaling-groups/
+  AAAReadmeBlogPost2:
+    Description: Read the following post to learn why this template is helpful - Darwin.
+    Type: String
+    Default: https://cloudywindows.io/post/cloudformation-stack-attack/
   AMIID:
     Description: >
       AMI ID - For testing pick an older one that will need a kernel patch or other reboot required patch for sure.
@@ -51,10 +61,18 @@ Parameters:
     AllowedValues: 
       - true
       - false    
+  ELBName:
+    Description: ELBName (Optional) - overrides same name in parent stack exports if both are provided
+    Type: String
+  ParentStackName:
+    Description: Parent stack name (Optional) - passes resources including ELBName
+    Type: String
 Conditions: 
   CreateDebugResources: !Equals [ !Ref TroubleShootingMode, "true" ]
   ReplaceEntireASG: !Equals [ !Ref UpdateType, "ReplaceEntireASG" ]
   SetupPseudoWebApp: !Equals [ !Ref SetupPseudoWebApp, "true" ]
+  ParentStackNameWasPassed: !Not [ !Equals [ !Ref ParentStackName, "" ]]
+  ELBNameWasPassed: !Not [ !Equals [ !Ref ELBName, "" ]]
 Resources:
   ASGRebootRole:
     Type: AWS::IAM::Role
@@ -171,6 +189,17 @@ Resources:
       MinSize: '1'
       MaxSize: '10'
       DesiredCapacity: !Ref DesiredCapacity
+      #Demonstrates an 1) **Optional dependency** on an ELB which can be sourced from either
+      # 2) **A parent stack**, or 3) **overridden by a parameter** in this stack
+      LoadBalancerNames:
+        !If
+         - ELBNameWasPassed
+         - - !Ref ELBName 
+         - !If
+             - ParentStackNameWasPassed
+             - - Fn::ImportValue:
+                   !Sub "${ParentStackName}-ELBName" 
+             - !Ref AWS::NoValue
       LaunchConfigurationName:
         Ref: ASGLaunchConfig
       LifecycleHookSpecificationList:
@@ -196,7 +225,7 @@ Resources:
       - DeviceName: "/dev/xvda"
         Ebs:
           VolumeType: 'gp2'
-          VolumeSize: '30'
+          VolumeSize: 30
       UserData:
         Fn::Base64: !Sub |
           #!/bin/bash
@@ -261,11 +290,14 @@ Resources:
             cat << HTMLHomePage > /var/www/html/index.html
             <html><head><title>CloudyWindows.io ASG With Lifecycle Hooks</title></head>
             <body>
-            <p><A HREF="https://cloudywindows.io/post/asg-lifecycle-hook-for-linux-kernel-patching-with-a-reboot-in-aws-autoscaling-groups/">Check Out The Blog Post For This Template!</A>
+            <h1>CloudyWindows.io ASG With Lifecycle Hooks</h1>
+            <p><A HREF="https://cloudywindows.io/post/asg-lifecycle-hook-for-linux-kernel-patching-with-a-reboot-in-aws-autoscaling-groups/"><IMG SRC="https://cloudywindows.io/mstile-150x150.png"> Check Out The Blog Post For This Template!</A>
             <BR><BR>Page retrieved from load balanced instance: $MYINSTANCEID 
             <BR>in ASG: $NAMEOFASG
             <BR>As a part of CF Stack: ${AWS::StackName}
-            <BR>with LAST_CF_PATCH_RUN: $LAST_CF_PATCH_RUN and ACTUAL_PATCH_DATE: $ACTUAL_PATCH_DATE</p>            </body>
+            <BR>with LAST_CF_PATCH_RUN: $LAST_CF_PATCH_RUN and ACTUAL_PATCH_DATE: $ACTUAL_PATCH_DATE</p>
+            <iframe src="https://cloudywindows.io" frameborder=0 width="100%" height="100%" ></iframe>
+            </body>
             </html>
           HTMLHomePage
           fi

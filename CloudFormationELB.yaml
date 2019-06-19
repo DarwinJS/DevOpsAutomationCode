@@ -1,0 +1,34 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Creates an ELB and exports name for cross stack references.
+Parameters:
+  AAAReadmeBlogPost:
+    Description: Read the following post to learn why this template is helpful - Darwin.
+    Type: String
+    Default: https://cloudywindows.io/post/cloudformation-stack-attack/
+Resources:
+  ElasticLoadBalancer:
+    Type: 'AWS::ElasticLoadBalancing::LoadBalancer'
+    Properties:
+      AvailabilityZones: !GetAZs
+      CrossZone: true
+      Listeners:
+        - LoadBalancerPort: "80"
+          InstancePort: "80"
+          Protocol: "HTTP"
+      HealthCheck:
+        Target: "HTTP:80/"
+        HealthyThreshold: "3"
+        UnhealthyThreshold: "5"
+        Interval: "30"
+        Timeout: "5"
+Outputs:
+  ELBName:
+    Value: !Ref ElasticLoadBalancer
+    Export:
+      Name: !Sub "${AWS::StackName}-ELBName"
+  ELBURL:
+    Description: ELB URL of the website
+    Value: !Join ['', ['http://', !GetAtt [ElasticLoadBalancer, DNSName]]]
+    Export:
+      Name: !Sub "${AWS::StackName}-ELBURL"

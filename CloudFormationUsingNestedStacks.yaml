@@ -1,0 +1,24 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Parent stack to nested stacks
+Parameters:
+  AAAReadmeBlogPost:
+    Description: Read the following post to learn why this template is helpful - Darwin.
+    Type: String
+    Default: https://cloudywindows.io/post/cloudformation-stack-attack/
+  S3BucketRoot:
+    Description: https://s3.amazonaws.com/cftemplates
+    Type: String
+    Default: https://s3.amazonaws.com/cloudywindows.io/files/
+Resources:
+  ELBStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub ${S3BucketRoot}/CloudFormationELB.yaml
+  ASGStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      Parameters:
+        ParentStackName: !Ref AWS::StackName
+        SetupPseudoWebApp: true
+        ELBName: !GetAtt ELBStack.Outputs.ELBName
+      TemplateURL: !Sub ${S3BucketRoot}/CloudFormationRebootRequiredPatchinginASG.yaml
