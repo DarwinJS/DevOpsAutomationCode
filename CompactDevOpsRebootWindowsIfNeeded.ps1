@@ -1,6 +1,6 @@
 
 <#
-See this post for full details on why this code is helpful: https://cloudywindows.io/post/
+See this post for full details on why this code is helpful: https://cloudywindows.io/post/super-compact-devops-ish-pending-reboot-test-for-the-rebootiest-operating-system-in-the-cloud/
 
 This code is a compact (small enough to be put in the script you need to use it within or inline in orchestration / IaC), DevOps-ish version of Get-PendingReboot.
 For compactness some sacrifices were made - it does not detect SCCM reboots and does not work remotely
