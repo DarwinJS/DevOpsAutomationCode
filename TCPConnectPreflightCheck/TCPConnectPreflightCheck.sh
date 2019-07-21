@@ -1,4 +1,7 @@
 
+# Why and How Blog Post: https://cloudywindows.io/post/mission-impossible-code-part-2-extreme-multilingual-iac-via-standard-code-for-preflight-tcp-connect-testing-a-list-of-endpoints-in-both-bash-and-powershell/
+# Windows and Linux Versions: https://github.com/DarwinJS/DevOpsAutomationCode/tree/master/TCPConnectPreflightCheck
+
 #Design Heuristic
 # 1. This approach does not require the nc command which might not be on some minimalized hosts like containers
 # 2. Receives a single, formatted string (rather than an array or hash or other data type) to:

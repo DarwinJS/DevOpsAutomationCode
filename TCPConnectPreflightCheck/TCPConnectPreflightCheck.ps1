@@ -1,7 +1,7 @@
 
 
 # Why and How Blog Post: https://cloudywindows.io/post/mission-impossible-code-part-2-extreme-multilingual-iac-via-standard-code-for-preflight-tcp-connect-testing-a-list-of-endpoints-in-both-bash-and-powershell/
-# Windows and Linux Versions:  
+# Windows and Linux Versions: https://github.com/DarwinJS/DevOpsAutomationCode/tree/master/TCPConnectPreflightCheck
 
 #Design Heuristic:
 # 1. This approach should work with all versions of powershell - including those backed by NetCore 2.x
