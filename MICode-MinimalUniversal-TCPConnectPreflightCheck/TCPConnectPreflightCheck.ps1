@@ -15,19 +15,21 @@
 # Consider implementing the Minimal, Universal Logging code with the below: https://github.com/DarwinJS/DevOpsAutomationCode/tree/master/MICode-MinimalUniversal-Logging
 
 $UrlPortPairList="outlook.com=80 google.com=80 test.com=442"
-$FailureCount=0
+$FailureCount=0 ; $ConnectTimeoutMS = '3000'
 foreach ($UrlPortPair in $UrlPortPairList.split(' '))
 {
   $array=$UrlPortPair.split('='); $url=$array[0]; $port=$array[1]
   write-host "TCP Test of $url on $port"
   $ErrorActionPreference = 'SilentlyContinue'
-  (new-object net.sockets.tcpclient).Connect($url,$port).Connected
-  If ($?)
-  { write-host "  Connection to $url on port $port succeeded" }
-  else
-  { write-host "  Connection to $url on port $port failed" 
+  $conntest = (new-object net.sockets.tcpclient).BeginConnect($url,$port,$null,$null)
+  $conntestwait = $conntest.AsyncWaitHandle.WaitOne($ConnectTimeoutMS,$False)
+  if (!$conntestwait)
+  { write-host "  Connection to $url on port $port failed"
+    $conntest.close()
     $FailureCount++
   }
+  else
+  { write-host "  Connection to $url on port $port succeeded" }
 }
 If ($FailureCount -gt 0)
 { write-host "$FailureCount tcp connect tests failed."
