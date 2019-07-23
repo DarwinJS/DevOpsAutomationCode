@@ -1,7 +1,7 @@
 
 
 # Why and How Blog Post: https://cloudywindows.io/post/mission-impossible-code-part-2-extreme-multilingual-iac-via-standard-code-for-preflight-tcp-connect-testing-a-list-of-endpoints-in-both-bash-and-powershell/
-# Windows and Linux Versions: https://github.com/DarwinJS/DevOpsAutomationCode/tree/master/TCPConnectPreflightCheck
+# Windows and Linux Versions: https://github.com/DarwinJS/DevOpsAutomationCode/tree/master/MICode-MinimalUniversal-TCPConnectPreflightCheck
 
 #Design Heuristic:
 # 1. This approach should work with all versions of powershell - including those backed by NetCore 2.x
@@ -11,6 +11,8 @@
 #      to escape or translate sophisticated data types
 #  * enables the arguments for the Windows and Linux version to 
 #      be exactly the same - in case you are passing into something that accomodates both platforms
+
+# Consider implementing the Minimal, Universal Logging code with the below: https://github.com/DarwinJS/DevOpsAutomationCode/tree/master/MICode-MinimalUniversal-Logging
 
 $UrlPortPairList="outlook.com=80 google.com=80 test.com=442"
 $FailureCount=0

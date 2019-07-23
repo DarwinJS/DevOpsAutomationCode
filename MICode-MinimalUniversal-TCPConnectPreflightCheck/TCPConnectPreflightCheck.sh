@@ -1,6 +1,6 @@
 
 # Why and How Blog Post: https://cloudywindows.io/post/mission-impossible-code-part-2-extreme-multilingual-iac-via-standard-code-for-preflight-tcp-connect-testing-a-list-of-endpoints-in-both-bash-and-powershell/
-# Windows and Linux Versions: https://github.com/DarwinJS/DevOpsAutomationCode/tree/master/TCPConnectPreflightCheck
+# Windows and Linux Versions: https://github.com/DarwinJS/DevOpsAutomationCode/tree/master/MICode-MinimalUniversal-TCPConnectPreflightCheck
 
 #Design Heuristic
 # 1. This approach does not require the nc command which might not be on some minimalized hosts like containers
@@ -10,6 +10,8 @@
 #      to escape or translate sophisticated data types
 #  * enables the arguments for the Windows and Linux version to 
 #      be exactly the same - in case you are passing into something that accomodates both platforms
+
+# Consider implementing the Minimal, Universal Logging code with the below: https://github.com/DarwinJS/DevOpsAutomationCode/tree/master/MICode-MinimalUniversal-Logging
 
 urlportpairlist="outlook.com=80 google.com=80 test.com=442"
 failurecount=0
@@ -29,15 +31,3 @@ if [ $failurecount -gt 0 ]; then
  echo "$failurecount tcp connect tests failed."
  exit $failurecount
 fi
-
-#Optional - this is the simpliest, most broadly compatible bash log function I could devise.
-# It is provided because shell scripts are frequently buried at the bottom of a complex stack and getting diagnostic data out can be challenging.
-# It also prevents you from being dependent on your tooling users for proper logging implementation by making it a self-contained concern.
-# It ensures a date string and that your logging goes to a system location that is subject to log collection
-# To implement, update the above "echo" statements to "logit"
-# If you already have logging handled, then the below may unnecessary.
-function logit() {
-  LOGSTRING="$(date +"%_b %e %H:%M:%S") $(hostname) USERDATA_SCRIPT: $1"
-  echo "$LOGSTRING"
-  echo "$LOGSTRING" >> /var/log/messages
-}
