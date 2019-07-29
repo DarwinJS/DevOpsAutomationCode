@@ -133,7 +133,7 @@ QT Date Stamp Formatting: https://doc.qt.io/qt-5/qdatetime.html#toString
 
 ### Preparation
 
-Section start: <span style="background-color:lightgreen;border: 1px">**[STARTED 07/25/2019 @ 08:20]**</span>
+Section start: <mark style="background-color:lightgreen;border: 1px">**[STARTED 07/25/2019 @ 08:20]**</mark>
 
 1. <span style="background-color:lightgreen;border: 1px">**[DONE 07/25 @ 08:23]**</span> Setup widget masher with the following command:
    `widget masher on`
