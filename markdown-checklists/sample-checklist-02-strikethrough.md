@@ -19,7 +19,7 @@ Section start: **[STARTED 07/25/2019 @ 08:20]**
 
    <span style="color:red">**RECORD SCREENSHOT:**</span>
 
-   ![1564057667184](Q:/gitrepos/DevOpsAutomationCode/markdown-checklists/1563976614625.png)
+   ![1564057667184](1563976614625.png)
 
 4. Setup a maintenance window in pager duty at this url: https://pagerduty.com/thisservice/window
 

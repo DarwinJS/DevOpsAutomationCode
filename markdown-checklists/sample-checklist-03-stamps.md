@@ -19,7 +19,7 @@ Section start: <span style="background-color:lightgreen;border: 1px">**[STARTED 
 
    <span style="color:red">**RECORD SCREENSHOT:**</span>
 
-   ![1564057667184](Q:/gitrepos/DevOpsAutomationCode/markdown-checklists/1563976614625.png)
+   ![1564057667184](1563976614625.png)
 
 4. <span style="background-color:salmon;border: 1px">**[SKIPPED 07/25 @ 08:32 Will Be No Interruption]**</span> Setup a maintenance window in pager duty at this url: https://pagerduty.com/thisservice/window
 
