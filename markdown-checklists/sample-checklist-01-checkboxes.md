@@ -18,7 +18,7 @@ Section start: **[STARTED 07/25/2019 @ 08:20]**
 
   **RECORD SCREENSHOT:**
 
-![1564057667184](1563976614625.png)
+   ![1564057667184](1563976614625.png)
 
 - [ ] Setup a maintenance window in pager duty at this url: https://pagerduty.com/thisservice/window
 
